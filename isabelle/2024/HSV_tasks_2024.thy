@@ -1,4 +1,4 @@
-theory HSV_tasks_2024 imports Main begin
+theory Scratch imports Main begin
 
 section \<open> Task 1: Extending our circuit synthesiser with NAND gates. \<close>
 
@@ -36,7 +36,7 @@ fun intro_nand where
          NAND (intro_nand c1) (intro_nand c2))"
 | "intro_nand (NOT c) = NAND (intro_nand c) TRUE"
 | "intro_nand TRUE = TRUE"
-| "intro_nand FALSE = NAND TRUE FALSE"
+| "intro_nand FALSE = FALSE "
 | "intro_nand (INPUT i) = INPUT i"
 
 
@@ -44,13 +44,16 @@ text \<open> The intro_nand transformation is sound. Note that there is a
   (deliberate) bug in the definition above, which you will need to fix 
   before you can prove the theorem below.\<close>
 theorem intro_nand_is_sound: "intro_nand c \<sim> c"
-  oops
+  apply (induction c)
+  apply auto
+  done
 
 text \<open> The only_nands predicate holds if a circuit contains only NAND gates. \<close>
 fun only_nands where
   "only_nands (NAND c1 c2) = (only_nands c1 \<and> only_nands c2)"
 | "only_nands (INPUT _) = True"
 | "only_nands _ = False"
+
 
 text \<open> The output of the intro_nand transformation is a circuit that only
   contains NAND gates. Note that there is a (deliberate) bug in the
