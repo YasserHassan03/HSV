@@ -1,4 +1,4 @@
-theory Scratch imports Main begin
+theory HSV_tasks_2024 imports Main begin
 
 section \<open> Task 1: Extending our circuit synthesiser with NAND gates. \<close>
 
@@ -39,7 +39,11 @@ fun intro_nand where
 | "intro_nand FALSE = FALSE "
 | "intro_nand (INPUT i) = INPUT i"
 
-
+(*
+definition "c1 = AND (INPUT 0) (INPUT 1)"
+definition "c2 = NAND (INPUT 0) (INPUT 1)"
+value "intro_nand c1"
+*)
 text \<open> The intro_nand transformation is sound. Note that there is a 
   (deliberate) bug in the definition above, which you will need to fix 
   before you can prove the theorem below.\<close>
@@ -52,6 +56,8 @@ text \<open> The only_nands predicate holds if a circuit contains only NAND gate
 fun only_nands where
   "only_nands (NAND c1 c2) = (only_nands c1 \<and> only_nands c2)"
 | "only_nands (INPUT _) = True"
+| "only_nands TRUE = True"
+| "only_nands FALSE = True"
 | "only_nands _ = False"
 
 
@@ -61,7 +67,10 @@ text \<open> The output of the intro_nand transformation is a circuit that only
   theorem below. \<close>
 theorem intro_nand_only_produces_nands:
   "only_nands (intro_nand c)"
-  oops
+  apply (induction c)
+  apply auto
+  done
+ 
 
 section \<open> Task 2: Converting numbers to lists of digits. \<close>
 
@@ -71,12 +80,28 @@ where
   "digits10 n = (if n < 10 then [n] else (n mod 10) # digits10 (n div 10))"
 
 value "digits10 42"
-
 text \<open> Every digit is less than 10 (helper lemma). \<close>
-lemma digits10_all_below_10_helper: 
-  "ds = digits10 n \<Longrightarrow> \<forall>d \<in> set ds. d < 10"
-  oops
 
+theorem t2:"\<forall>d \<in> set (digits10 n). d < 10"
+proof (induction n rule : digits10.induct )
+  case (1 n)
+  then show ?case 
+  proof (cases "n<10")
+    case True
+    then show ?thesis
+      by (simp add: "1.prems")
+  next
+    case False
+    have "digits10 n = (n mod 10) # digits10 (n div 10)" 
+      by (simp add: False)
+    hence "n mod 10 < 10" by auto
+    hence " \<forall>d \<in> set (digits10 (n div 10)). d < 10" using 1
+      by fastforce
+    then show ?thesis
+      by (metis \<open>digits10 n = n mod 10 # digits10 (n div 10)\<close> \<open>n mod 10 < 10\<close> set_ConsD)
+  qed
+qed
+ 
 text \<open> Every digit is less than 10. \<close>
 corollary 
   "\<forall>d \<in> set (digits10 n). d < 10" 
@@ -91,6 +116,36 @@ where
 | "sum10 (d # ds) = d + 10 * sum10 ds"
 
 value "sum10 [2,4]"
+
+text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
+theorem digits10_sum10_inverse: "sum10 (digits10 n) = n"
+proof (induction n)
+  case 0
+  then show ?case by simp
+next
+  case (Suc k)
+  assume IH: "sum10 (digits10 k) = k"
+  hence "sum10 ((if k < 10 then [k] else (k mod 10) # digits10 (k div 10)) = k" try
+  then show ?case sorry
+qed
+  
+
+
+
+text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
+theorem digits10_sum10_inverse: 
+  "sum10 (digits10 n) = n"
+  oops
+
+section \<open> Task 4: A divisibility theorem. \<close>
+
+section \<open> Task 5: Verifying a naive SAT solver. \<close>
+
+text \<open> This function can be used with List.fold to simulate a do-until loop. \<close>
+definition until :: "('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a option \<Rightarrow> 'a option" 
+  where
+  "until p x z == if z = None then if p x then Some x else None else z" 
+
 
 text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
 theorem digits10_sum10_inverse: 
@@ -247,14 +302,14 @@ text \<open> If the naive SAT solver returns a valuation, then that
 theorem naive_solve_correct_sat:
   assumes "naive_solve q = Some \<rho>"
   shows "evaluate q \<rho>"
-  oops
+  by (metis assms naive_solve_def until_none_some)
 
 text \<open> If the naive SAT solver returns no valuation, then none of the valuations 
   it tried make the query true. \<close>
 theorem naive_solve_correct_unsat:
   assumes "naive_solve q = None"
   shows "\<forall>\<rho> \<in> set (mk_valuation_list (symbol_list q)). \<not> evaluate q \<rho>" 
-  oops
+  by (metis assms list.pred_set naive_solve_def until_none)
 
 section \<open> Task 6: Verifying a simple SAT solver. \<close>
 
