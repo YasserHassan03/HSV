@@ -82,7 +82,8 @@ where
 value "digits10 42"
 text \<open> Every digit is less than 10 (helper lemma). \<close>
 
-theorem t2:"\<forall>d \<in> set (digits10 n). d < 10"
+
+lemma t2:"\<forall>d \<in> set (digits10 n). d < 10"
 proof (induction n rule : digits10.induct )
   case (1 n)
   then show ?case 
@@ -102,10 +103,12 @@ proof (induction n rule : digits10.induct )
   qed
 qed
  
+
+ 
 text \<open> Every digit is less than 10. \<close>
 corollary 
-  "\<forall>d \<in> set (digits10 n). d < 10" 
-  oops
+  "\<forall>d \<in> set (digits10 n). d < 10" using t2
+  by blast
 
 text \<open> Task 3: Converting to and from digit lists. \<close>
 
@@ -118,41 +121,15 @@ where
 value "sum10 [2,4]"
 
 text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
-theorem digits10_sum10_inverse: "sum10 (digits10 n) = n"
-proof (induction n)
-  case 0
-  then show ?case by simp
-next
-  case (Suc k)
-  assume IH: "sum10 (digits10 k) = k"
-  hence "sum10 ((if k < 10 then [k] else (k mod 10) # digits10 (k div 10)) = k" try
-  then show ?case sorry
-qed
-  
-
-
-
-text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
 theorem digits10_sum10_inverse: 
   "sum10 (digits10 n) = n"
-  oops
+  by (induct n rule: digits10.induct,simp)
 
 section \<open> Task 4: A divisibility theorem. \<close>
 
-section \<open> Task 5: Verifying a naive SAT solver. \<close>
+theorem t4 : "\<forall>a b. sum10 ([a,b,a,b,a,b]) mod 37 = 0"
+  by simp
 
-text \<open> This function can be used with List.fold to simulate a do-until loop. \<close>
-definition until :: "('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a option \<Rightarrow> 'a option" 
-  where
-  "until p x z == if z = None then if p x then Some x else None else z" 
-
-
-text \<open> Applying digits10 then sum10 gets you back to the same number. \<close>
-theorem digits10_sum10_inverse: 
-  "sum10 (digits10 n) = n"
-  oops
-
-section \<open> Task 4: A divisibility theorem. \<close>
 
 section \<open> Task 5: Verifying a naive SAT solver. \<close>
 
