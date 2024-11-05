@@ -127,8 +127,8 @@ theorem digits10_sum10_inverse:
 
 section \<open> Task 4: A divisibility theorem. \<close>
 
-theorem t4 : "\<forall>a b. sum10 ([a,b,a,b,a,b]) mod 37 = 0"
-  by simp
+theorem t4 : "\<forall>x a b. x = sum10 ([a,b,a,b,a,b]) \<Longrightarrow> x mod 37 =0 "
+  by (metis nat.simps(3))
 
 
 section \<open> Task 5: Verifying a naive SAT solver. \<close>
