@@ -141,7 +141,6 @@ function symbol_seq_clause(c:clause) : seq<symbol>
 function symbol_seq(q:query) : seq<symbol>
   ensures dupe_free(symbol_seq(q))
   ensures forall x :: x in symbol_seq(q) <==> x in symbols(q)
-  decreases(symbols(q))
   decreases |q|
 {
   if q == [] then [] else
@@ -161,10 +160,16 @@ method eval_clause (c:clause, r:valuation)
   ensures result == evaluate_clause(c,r)
 {
   var i := 0;
-  while (i < |c|) {
+  var seen : clause := [];
+  while (i < |c|)
+    invariant 0 <= i <= |c|
+    invariant seen == c[..i]
+    invariant evaluate_clause(seen,r) == false
+  {
     if (c[i] in r.Items) {
       return true;
     }
+    seen :=  seen + [c[i]]  ;
     i := i + 1;
   }
   return false;
