@@ -86,15 +86,16 @@ ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
 }
 
 
-// Part (c): concatenating two dupe-free sequences
+//Part (c): concatenating two dupe-free sequences
 lemma dupe_free_concat(xs:seq<symbol>, ys:seq<symbol>)
 requires dupe_free(xs)
 requires dupe_free(ys)
-//requires ...?
+requires forall x :: x in xs ==> x !in ys
+requires forall i, j :: 0 <= i < j < |xs + ys| ==> (xs + ys)[i] != (xs + ys)[j];
 ensures dupe_free (xs + ys)
-{
-  // ...?
-}
+ {
+
+ }
 
 //////////////////////////////////////////
 // TASK 2: Extracting symbols from queries
