@@ -88,21 +88,19 @@ method rev2(xs:seq<symbol>)
 
 //Part (c): concatenating two dupe-free sequences
 // This Lemma would NOT hold if we had common values in xs and ys eg xs = [1,2,3] ys = [2,3,4] although both are dupe free, their concatenation wouldnt be dupe free.
-// Therefore a precondition if needed to check that we have no common values before the concatenation
+// Therefore a precondition is needed to check that we have no common values before the concatenation
 lemma dupe_free_concat(xs:seq<symbol>, ys:seq<symbol>)
-requires dupe_free(xs)
-requires dupe_free(ys)
-requires forall x :: x in xs ==> x !in ys
-requires forall y :: y in ys ==> y !in xs
-ensures dupe_free (xs + ys)
- {
+  requires dupe_free(xs)
+  requires dupe_free(ys)
+  requires forall x :: x in xs ==> x !in ys
+  requires forall y :: y in ys ==> y !in xs
+  ensures dupe_free (xs + ys)
+{
   reveal dupe_free();
-  var res := xs +ys;
-  if |res| > 0 {
-    assert forall i :: 0 <=i <|xs| ==> (res[i] in xs) && (res[i] !in ys);
-    assert forall j:: |xs| <= j < |res| ==> (res[j] !in xs) && (res[j] in ys);
-  }
- }
+  var res := xs + ys;
+  assert forall i :: 0 <=i <|xs| ==> (res[i] in xs) && (res[i] !in ys);
+  assert forall j:: |xs| <= j < |res| ==> (res[j] !in xs) && (res[j] in ys);
+}
 
 //////////////////////////////////////////
 // TASK 2: Extracting symbols from queries
@@ -111,6 +109,7 @@ ensures dupe_free (xs + ys)
 // remove the given set of symbols from a clause
 function remove_symbols_clause(c:clause, xs:set<symbol>) : clause
   ensures symbols_clause(remove_symbols_clause(c, xs)) == symbols_clause(c) - xs
+  ensures |remove_symbols_clause(c, xs)| <= |c|
 {
   if c == [] then [] else
   var c' := remove_symbols_clause(c[1..], xs);
@@ -118,8 +117,9 @@ function remove_symbols_clause(c:clause, xs:set<symbol>) : clause
 }
 
 // remove the given set of symbols from a query
-function remove_symbols(q:query, xs:set<symbol>) : query
+function remove_symbols(q:query, xs:set<symbol>) : (query)
   ensures symbols(remove_symbols(q, xs)) == symbols(q) - xs
+  ensures |remove_symbols(q, xs)| <= |q|
 {
   if q == [] then [] else
   [remove_symbols_clause(q[0], xs)] + remove_symbols(q[1..], xs)
@@ -129,6 +129,7 @@ function remove_symbols(q:query, xs:set<symbol>) : query
 function symbol_seq_clause(c:clause) : seq<symbol>
   ensures dupe_free(symbol_seq_clause(c))
   ensures forall x :: x in symbol_seq_clause(c) <==> x in symbols_clause(c)
+  decreases symbols_clause(c)
 {
   if c == [] then [] else
   var x := c[0].0;
@@ -140,10 +141,13 @@ function symbol_seq_clause(c:clause) : seq<symbol>
 function symbol_seq(q:query) : seq<symbol>
   ensures dupe_free(symbol_seq(q))
   ensures forall x :: x in symbol_seq(q) <==> x in symbols(q)
+  decreases(symbols(q))
+  decreases |q|
 {
   if q == [] then [] else
   var xs := symbols_clause(q[0]);
   var q' := remove_symbols(q[1..], xs);
+  dupe_free_concat(symbol_seq_clause(q[0]),symbol_seq(q'));
   symbol_seq_clause(q[0]) + symbol_seq(q')
 }
 
