@@ -13,19 +13,19 @@ type valuation = map<symbol,bool>
 
 // extracts the set of symbols from a given clause
 function symbols_clause(c:clause) : set<symbol>
-ensures (forall xb :: xb in c ==> xb.0 in symbols_clause(c))
-ensures (forall x :: (x in symbols_clause(c)) ==> (exists b :: (x,b) in c))
+  ensures (forall xb :: xb in c ==> xb.0 in symbols_clause(c))
+  ensures (forall x :: (x in symbols_clause(c)) ==> (exists b :: (x,b) in c))
 {
-  if c == [] then {} else 
-    assert forall xb :: xb in c ==> xb in {c[0]} || xb in c[1..];
-    {c[0].0} + symbols_clause(c[1..])
+  if c == [] then {} else
+  assert forall xb :: xb in c ==> xb in {c[0]} || xb in c[1..];
+  {c[0].0} + symbols_clause(c[1..])
 }
 
 // extracts the set of symbols from a given query
 function symbols(q:query) : set<symbol>
 {
   if q == [] then {} else
-    symbols(q[1..]) + symbols_clause(q[0])
+  symbols(q[1..]) + symbols_clause(q[0])
 }
 
 // evaluates the given clause under the given valuation
@@ -43,7 +43,7 @@ predicate evaluate(q:query, r:valuation) {
 ///////////////////////////////////
 
 // holds if a sequence of symbols has no duplicates
-predicate dupe_free(xs:seq<symbol>) 
+predicate dupe_free(xs:seq<symbol>)
 {
   forall i,j :: 0 <= i < j < |xs| ==> xs[i] != xs[j]
 }
@@ -51,12 +51,12 @@ predicate dupe_free(xs:seq<symbol>)
 
 // Part (a): reversing a dupe-free sequence (recursive implementation)
 method rev(xs:seq<symbol>)
-returns (ys:seq<symbol>)
-requires dupe_free(xs)
-ensures dupe_free(ys) 
-ensures |xs| == |ys|
-ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
-{    
+  returns (ys:seq<symbol>)
+  requires dupe_free(xs)
+  ensures dupe_free(ys)
+  ensures |xs| == |ys|
+  ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
+{
   if (xs == []) {
     ys := [];
   } else {
@@ -67,18 +67,18 @@ ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
 
 // Part (b): reversing a dupe-free sequence (iterative implementation)
 method rev2(xs:seq<symbol>)
-returns (ys:seq<symbol>)
-requires dupe_free(xs)
-ensures dupe_free(ys) 
-ensures |xs| == |ys|
-ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
+  returns (ys:seq<symbol>)
+  requires dupe_free(xs)
+  ensures dupe_free(ys)
+  ensures |xs| == |ys|
+  ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
 {
   var i:= |xs|-1;
   ys:=[];
   while i>=0
-  invariant -1 <= i < |xs|
-  invariant |ys| == |xs| - i - 1
-  invariant forall i :: 0 <= i < |ys| ==> ys[i] == xs[|xs| - i -1]
+    invariant -1 <= i < |xs|
+    invariant |ys| == |xs| - i - 1
+    invariant forall i :: 0 <= i < |ys| ==> ys[i] == xs[|xs| - i -1]
   {
     ys:= ys + [xs[i]];
     i:=i-1;
@@ -87,14 +87,21 @@ ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
 
 
 //Part (c): concatenating two dupe-free sequences
+// This Lemma would NOT hold if we had common values in xs and ys eg xs = [1,2,3] ys = [2,3,4] although both are dupe free, their concatenation wouldnt be dupe free.
+// Therefore a precondition if needed to check that we have no common values before the concatenation
 lemma dupe_free_concat(xs:seq<symbol>, ys:seq<symbol>)
 requires dupe_free(xs)
 requires dupe_free(ys)
 requires forall x :: x in xs ==> x !in ys
-requires forall i, j :: 0 <= i < j < |xs + ys| ==> (xs + ys)[i] != (xs + ys)[j];
+requires forall y :: y in ys ==> y !in xs
 ensures dupe_free (xs + ys)
  {
-
+  reveal dupe_free();
+  var res := xs +ys;
+  if |res| > 0 {
+    assert forall i :: 0 <=i <|xs| ==> (res[i] in xs) && (res[i] !in ys);
+    assert forall j:: |xs| <= j < |res| ==> (res[j] !in xs) && (res[j] in ys);
+  }
  }
 
 //////////////////////////////////////////
@@ -103,41 +110,41 @@ ensures dupe_free (xs + ys)
 
 // remove the given set of symbols from a clause
 function remove_symbols_clause(c:clause, xs:set<symbol>) : clause
-ensures symbols_clause(remove_symbols_clause(c, xs)) == symbols_clause(c) - xs
+  ensures symbols_clause(remove_symbols_clause(c, xs)) == symbols_clause(c) - xs
 {
   if c == [] then [] else
-    var c' := remove_symbols_clause(c[1..], xs);
-    if c[0].0 in xs then c' else [c[0]] + c'
+  var c' := remove_symbols_clause(c[1..], xs);
+  if c[0].0 in xs then c' else [c[0]] + c'
 }
 
 // remove the given set of symbols from a query
 function remove_symbols(q:query, xs:set<symbol>) : query
-ensures symbols(remove_symbols(q, xs)) == symbols(q) - xs
+  ensures symbols(remove_symbols(q, xs)) == symbols(q) - xs
 {
   if q == [] then [] else
-    [remove_symbols_clause(q[0], xs)] + remove_symbols(q[1..], xs)
+  [remove_symbols_clause(q[0], xs)] + remove_symbols(q[1..], xs)
 }
 
 // Part (a): extract the sequence of symbols that appear in a clause
 function symbol_seq_clause(c:clause) : seq<symbol>
-ensures dupe_free(symbol_seq_clause(c))
-ensures forall x :: x in symbol_seq_clause(c) <==> x in symbols_clause(c)
+  ensures dupe_free(symbol_seq_clause(c))
+  ensures forall x :: x in symbol_seq_clause(c) <==> x in symbols_clause(c)
 {
   if c == [] then [] else
-    var x := c[0].0;
-    var c' := remove_symbols_clause(c[1..], {x});
-    [x] + symbol_seq_clause(c')
+  var x := c[0].0;
+  var c' := remove_symbols_clause(c[1..], {x});
+  [x] + symbol_seq_clause(c')
 }
 
 // Part (b): extract the sequence of symbols that appear in a query
 function symbol_seq(q:query) : seq<symbol>
-ensures dupe_free(symbol_seq(q))
-ensures forall x :: x in symbol_seq(q) <==> x in symbols(q)
+  ensures dupe_free(symbol_seq(q))
+  ensures forall x :: x in symbol_seq(q) <==> x in symbols(q)
 {
   if q == [] then [] else
-    var xs := symbols_clause(q[0]);
-    var q' := remove_symbols(q[1..], xs);
-    symbol_seq_clause(q[0]) + symbol_seq(q')
+  var xs := symbols_clause(q[0]);
+  var q' := remove_symbols(q[1..], xs);
+  symbol_seq_clause(q[0]) + symbol_seq(q')
 }
 
 /////////////////////////////
@@ -145,9 +152,9 @@ ensures forall x :: x in symbol_seq(q) <==> x in symbols(q)
 /////////////////////////////
 
 // evaluate the given clause under the given valuation (imperative version)
-method eval_clause (c:clause, r:valuation) 
-returns (result: bool)
-ensures result == evaluate_clause(c,r)
+method eval_clause (c:clause, r:valuation)
+  returns (result: bool)
+  ensures result == evaluate_clause(c,r)
 {
   var i := 0;
   while (i < |c|) {
@@ -160,9 +167,9 @@ ensures result == evaluate_clause(c,r)
 }
 
 // evaluate the given query under the given valuation (imperative version)
-method eval(q:query, r:valuation) 
-returns (result: bool)
-ensures result == evaluate(q,r)
+method eval(q:query, r:valuation)
+  returns (result: bool)
+  ensures result == evaluate(q,r)
 {
   var i := 0;
   while (i < |q|) {
@@ -179,35 +186,35 @@ ensures result == evaluate(q,r)
 // TASK 4: Verifying a brute-force SAT solver
 /////////////////////////////////////////////
 
-// prepends (x,b) to each valuation in a given sequence 
+// prepends (x,b) to each valuation in a given sequence
 function map_prepend (x:symbol, b:bool, rs:seq<valuation>) : seq<valuation>
 {
   if rs == [] then [] else
-    [rs[0][x:=b]] + map_prepend(x,b,rs[1..])
+  [rs[0][x:=b]] + map_prepend(x,b,rs[1..])
 }
 
 // constructs all possible valuations of the given symbols
 function mk_valuation_seq (xs: seq<symbol>) : seq<valuation>
 {
   if xs == [] then [ map[] ] else
-    var rs := mk_valuation_seq(xs[1..]);
-    var x := xs[0];
-    map_prepend(x,true,rs) + map_prepend(x,false,rs)
+  var rs := mk_valuation_seq(xs[1..]);
+  var x := xs[0];
+  map_prepend(x,true,rs) + map_prepend(x,false,rs)
 }
 
-// Part (c): a brute-force SAT solver. Given a query, it constructs all possible 
-// valuations over the symbols that appear in the query, and then 
+// Part (c): a brute-force SAT solver. Given a query, it constructs all possible
+// valuations over the symbols that appear in the query, and then
 // iterates through those valuations until it finds one that works.
-method naive_solve (q:query) 
-returns (sat:bool, r:valuation)
-ensures sat==true ==> evaluate(q,r)
-ensures sat==false ==> forall r:valuation :: r in mk_valuation_seq(symbol_seq(q)) ==> !evaluate(q,r)
+method naive_solve (q:query)
+  returns (sat:bool, r:valuation)
+  ensures sat==true ==> evaluate(q,r)
+  ensures sat==false ==> forall r:valuation :: r in mk_valuation_seq(symbol_seq(q)) ==> !evaluate(q,r)
 {
   var xs := symbol_seq(q);
   var rs := mk_valuation_seq(xs);
   sat := false;
   var i := 0;
-  while (i < |rs|) 
+  while (i < |rs|)
   {
     sat := eval(q, rs[i]);
     if (sat) {
@@ -222,11 +229,11 @@ ensures sat==false ==> forall r:valuation :: r in mk_valuation_seq(symbol_seq(q)
 // TASK 5: Verifying a simple SAT solver
 ////////////////////////////////////////
 
-// This function updates a clause under the valuation x:=b. 
+// This function updates a clause under the valuation x:=b.
 // This means that the literal (x,b) is true. So, if the clause
-// contains the literal (x,b), the whole clause is true and can 
-// be deleted. Otherwise, all occurrences of (x,!b) can be 
-// removed from the clause because those literals are false and 
+// contains the literal (x,b), the whole clause is true and can
+// be deleted. Otherwise, all occurrences of (x,!b) can be
+// removed from the clause because those literals are false and
 // cannot contribute to making the clause true.
 function update_clause (x:symbol, b:bool, c:clause) : query
 {
@@ -238,16 +245,16 @@ function update_clause (x:symbol, b:bool, c:clause) : query
 function update_query (x:symbol, b:bool, q:query) : query
 {
   if q == [] then [] else
-    var q_new := update_clause(x,b,q[0]);
-    var q' := update_query(x,b,q[1..]);
-    q_new + q'
+  var q_new := update_clause(x,b,q[0]);
+  var q' := update_query(x,b,q[1..]);
+  q_new + q'
 }
 
-// Updating a query under the valuation x:=b is the same as updating 
+// Updating a query under the valuation x:=b is the same as updating
 // the valuation itself and leaving the query unchanged.
 lemma evaluate_update_query(x:symbol, b:bool, r:valuation, q:query)
-requires x !in r.Keys
-ensures evaluate (update_query (x,b,q), r) == evaluate (q, r[x:=b])
+  requires x !in r.Keys
+  ensures evaluate (update_query (x,b,q), r) == evaluate (q, r[x:=b])
 {
   // ...?
 }
@@ -255,14 +262,14 @@ ensures evaluate (update_query (x,b,q), r) == evaluate (q, r[x:=b])
 // A simple SAT solver. Given a query, it does a three-way case split. If
 // the query has no clauses then it is trivially satisfiable (with the
 // empty valuation). If the first clause in the query is empty, then the
-// query is unsatisfiable. Otherwise, it considers the first symbol that 
-// appears in the query, and makes two recursive solving attempts: one 
+// query is unsatisfiable. Otherwise, it considers the first symbol that
+// appears in the query, and makes two recursive solving attempts: one
 // with that symbol evaluated to true, and one with it evaluated to false.
 // If neither recursive attempt succeeds, the query is unsatisfiable.
 method simp_solve (q:query)
-returns (sat:bool, r:valuation)
-ensures sat==true ==> evaluate(q,r)
-ensures sat==false ==> forall r :: !evaluate(q,r)
+  returns (sat:bool, r:valuation)
+  ensures sat==true ==> evaluate(q,r)
+  ensures sat==false ==> forall r :: !evaluate(q,r)
 {
   if (q == []) {
     return true, map[];
@@ -274,7 +281,7 @@ ensures sat==false ==> forall r :: !evaluate(q,r)
     if (sat) {
       r := r[x:=true];
       return;
-    } 
+    }
     sat, r := simp_solve(update_query(x,false,q));
     if (sat) {
       r := r[x:=false];
@@ -288,7 +295,7 @@ method Main ()
 {
   var sat : bool;
   var r : valuation;
-  var q1 := /* (a ∨ b) ∧ (¬b ∨ c) */ 
+  var q1 := /* (a ∨ b) ∧ (¬b ∨ c) */
             [[(1, true), (2, true)], [(2, false), (3, true)]];
   var q2 := /* (a ∨ b) ∧ (¬a ∨ ¬b) */
             [[(1, true), (2, true)], [(1, false)], [(2, false)]];
@@ -296,13 +303,13 @@ method Main ()
             [[(1, true), (2, false)]];
   var q4 := /* (¬b ∨ a) */
             [[(2, false), (1, true)]];
-  
+
   var symbol_seq := symbol_seq(q1);
   print "symbols = ", symbol_seq, "\n";
 
   var rs := mk_valuation_seq(symbol_seq);
   print "all valuations = ", rs, "\n";
-  
+
   sat, r := naive_solve(q1);
   print "solver = naive, q1 result = ", sat, ", valuation = ", r, "\n";
 
