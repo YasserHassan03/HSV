@@ -48,12 +48,15 @@ predicate dupe_free(xs:seq<symbol>)
   forall i,j :: 0 <= i < j < |xs| ==> xs[i] != xs[j]
 }
 
+
 // Part (a): reversing a dupe-free sequence (recursive implementation)
 method rev(xs:seq<symbol>)
 returns (ys:seq<symbol>)
 requires dupe_free(xs)
-ensures dupe_free(ys)
-{
+ensures dupe_free(ys) 
+ensures |xs| == |ys|
+ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
+{    
   if (xs == []) {
     ys := [];
   } else {
@@ -66,10 +69,22 @@ ensures dupe_free(ys)
 method rev2(xs:seq<symbol>)
 returns (ys:seq<symbol>)
 requires dupe_free(xs)
-ensures dupe_free(ys)
+ensures dupe_free(ys) 
+ensures |xs| == |ys|
+ensures forall i :: 0<= i < |xs| ==> ys[i] == xs[|xs| - i - 1]
 {
-  // ...?
+  var i:= |xs|-1;
+  ys:=[];
+  while i>=0
+  invariant -1 <= i < |xs|
+  invariant |ys| == |xs| - i - 1
+  invariant forall i :: 0 <= i < |ys| ==> ys[i] == xs[|xs| - i -1]
+  {
+    ys:= ys + [xs[i]];
+    i:=i-1;
+  }
 }
+
 
 // Part (c): concatenating two dupe-free sequences
 lemma dupe_free_concat(xs:seq<symbol>, ys:seq<symbol>)
