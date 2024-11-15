@@ -34,7 +34,8 @@ predicate evaluate_clause(c:clause, r:valuation) {
 }
 
 // evaluates the given query under the given valuation
-predicate evaluate(q:query, r:valuation) {
+predicate evaluate(q:query, r:valuation)
+{
   forall i :: 0 <= i < |q| ==> evaluate_clause(q[i], r)
 }
 
@@ -160,16 +161,13 @@ method eval_clause (c:clause, r:valuation)
   ensures result == evaluate_clause(c,r)
 {
   var i := 0;
-  var seen : clause := [];
   while (i < |c|)
     invariant 0 <= i <= |c|
-    invariant seen == c[..i]
-    invariant evaluate_clause(seen,r) == false
+    invariant evaluate_clause(c[..i],r) == false
   {
     if (c[i] in r.Items) {
       return true;
     }
-    seen :=  seen + [c[i]]  ;
     i := i + 1;
   }
   return false;
@@ -181,7 +179,10 @@ method eval(q:query, r:valuation)
   ensures result == evaluate(q,r)
 {
   var i := 0;
-  while (i < |q|) {
+  while (i < |q|) 
+  invariant 0 <= i <= |q|
+  invariant evaluate(q[..i],r) == true
+  {
     result := eval_clause(q[i], r);
     if (!result) {
       return false;
@@ -224,6 +225,8 @@ method naive_solve (q:query)
   sat := false;
   var i := 0;
   while (i < |rs|)
+  invariant 0 <= i <= |rs|
+  invariant forall val :: val in rs[..i] ==> evaluate(q,val) == false
   {
     sat := eval(q, rs[i]);
     if (sat) {
