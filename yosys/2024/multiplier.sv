@@ -61,6 +61,11 @@ module multiplier (
       in2_past <= in2_past;
     end
   end
+  always_comb begin
+    if(in1_past != 1 && in2_past != 1)begin
+      cover(accumulator == 13 && stage ==9);
+    end
+  end
 
    always @(posedge clk) begin
 
@@ -103,20 +108,6 @@ module multiplier (
     if (stage == 9) begin 
         assert(accumulator == $past(in2,9) * $past(in1[7:0],9));
     end
-
-    
-
-
- 
-  
-   
-  
-    
-    
-
-
-     // write your properties here!
-
 
    end
 
