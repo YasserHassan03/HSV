@@ -48,6 +48,7 @@ module multiplier (
 
 `ifdef FORMAL
 
+
    always @(posedge clk) begin
 
     // task 1:
@@ -81,9 +82,12 @@ module multiplier (
     if (stage == 8) begin 
         assert(accumulator == $past(in2,8) * $past(in1[6:0],8));
     end
+    //task3:
     if (stage == 9) begin 
         assert(accumulator == $past(in2,9) * $past(in1[7:0],9));
     end
+    
+
 
  
   
