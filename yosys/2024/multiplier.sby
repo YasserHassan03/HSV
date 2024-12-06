@@ -1,6 +1,6 @@
 [options]
 mode prove
-depth 13
+depth 18
 
 [engines]
 smtbmc

@@ -51,7 +51,13 @@ module multiplier (
    always @(posedge clk) begin
 
     // task 1:
-  assert(out <= 'hfe02);
+    assert(out <= 'hfe02);
+    // task 2:
+    if (stage != 0) begin
+        assert(stage == $past(stage) + 1);
+    end 
+  
+    
     
 
 
