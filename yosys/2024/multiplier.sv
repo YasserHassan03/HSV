@@ -58,7 +58,10 @@ module multiplier (
         //task4:
         assert(out >= $past(out));
     end 
-    //task4:
+    //task5:
+    if (stage == 5) begin 
+        assert(accumulator == $past(in2,5) * $past(in1[3:0],5));
+    end
     
   
     
