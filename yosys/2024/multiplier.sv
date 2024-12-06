@@ -47,7 +47,20 @@ module multiplier (
 
 
 `ifdef FORMAL
-
+  reg [7:0] in1_past = 0;
+  reg [15:0] in2_past = 0;
+  always @(posedge clk) begin
+    if(stage == 0)
+    begin
+      in1_past <= in1;
+      in2_past <= in2;
+    end
+    else
+    begin
+      in1_past <= in1_past;
+      in2_past <= in2_past;
+    end
+  end
 
    always @(posedge clk) begin
 
@@ -58,6 +71,10 @@ module multiplier (
         assert(stage == $past(stage) + 1);
         //task4:
         assert(out >= $past(out));
+        //task7:
+        assert(in1_shifted == in1_past >> $past(stage));
+        //task8:
+        assert(in2_shifted == in2_past << $past(stage));
     end 
     //task5:
     if (stage == 5) begin 
@@ -86,6 +103,7 @@ module multiplier (
     if (stage == 9) begin 
         assert(accumulator == $past(in2,9) * $past(in1[7:0],9));
     end
+
     
 
 
