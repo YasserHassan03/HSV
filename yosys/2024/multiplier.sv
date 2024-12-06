@@ -50,7 +50,13 @@ module multiplier (
 
    always @(posedge clk) begin
 
+    // task 1:
+  assert(out <= 'hfe02);
+    
+
+
      // write your properties here!
+
 
    end
 

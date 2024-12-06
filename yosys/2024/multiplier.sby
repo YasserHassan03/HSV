@@ -1,0 +1,13 @@
+[options]
+mode prove
+depth 13
+
+[engines]
+smtbmc
+
+[script]
+read -formal multiplier.sv
+prep -top multiplier
+
+[files]
+multiplier.sv
