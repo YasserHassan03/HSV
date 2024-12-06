@@ -55,7 +55,11 @@ module multiplier (
     // task 2:
     if (stage != 0) begin
         assert(stage == $past(stage) + 1);
+        //task4:
+        assert(out >= $past(out));
     end 
+    //task4:
+    
   
     
     
