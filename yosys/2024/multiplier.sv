@@ -62,7 +62,32 @@ module multiplier (
     if (stage == 5) begin 
         assert(accumulator == $past(in2,5) * $past(in1[3:0],5));
     end
-    
+    //task6:
+    if (stage == 2) begin 
+        assert(accumulator == $past(in2,2) * $past(in1[0:0],2));
+    end
+    if (stage == 3) begin 
+        assert(accumulator == $past(in2,3) * $past(in1[1:0],3));
+    end
+    if (stage == 4) begin 
+        assert(accumulator == $past(in2,4) * $past(in1[2:0],4));
+    end
+    if (stage == 6) begin 
+        assert(accumulator == $past(in2,6) * $past(in1[4:0],6));
+    end
+    if (stage == 7) begin 
+        assert(accumulator == $past(in2,7) * $past(in1[5:0],7));
+    end
+    if (stage == 8) begin 
+        assert(accumulator == $past(in2,8) * $past(in1[6:0],8));
+    end
+    if (stage == 9) begin 
+        assert(accumulator == $past(in2,9) * $past(in1[7:0],9));
+    end
+
+ 
+  
+   
   
     
     
