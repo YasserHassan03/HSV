@@ -61,6 +61,7 @@ module multiplier (
       in2_past <= in2_past;
     end
   end
+  //task9: by proving it fails when we run with mode cover we prove that acummulator never reaches 13 therefore 13 is a prime number
   always_comb begin
     if(in1_past != 1 && in2_past != 1)begin
       cover(accumulator == 13 && stage ==9);
@@ -107,6 +108,10 @@ module multiplier (
     //task3:
     if (stage == 9) begin 
         assert(accumulator == $past(in2,9) * $past(in1[7:0],9));
+    end
+    //task 10:
+    if (stage >= 2 && stage <= 9) begin
+      assert(accumulator == (in2_past * (in1_past & ((1 << (stage - 1)) - 1))));
     end
 
    end
