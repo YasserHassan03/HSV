@@ -127,10 +127,12 @@ theorem digits10_sum10_inverse:
 
 section \<open> Task 4: A divisibility theorem. \<close>
 
-theorem t4 : "\<forall>x a b. x = sum10 ([a,b,a,b,a,b]) \<Longrightarrow> x mod 37 =0 "
-  by (metis nat.simps(3))
 
 
+theorem t4 :"\<forall>x a b.([a,b,a,b,a,b] = digits_10 x) \<and> (sum10 [a,b,a,b,a,b] = x) \<Longrightarrow> x mod 37 = 0" 
+  by fastforce
+
+ 
 section \<open> Task 5: Verifying a naive SAT solver. \<close>
 
 text \<open> This function can be used with List.fold to simulate a do-until loop. \<close>
@@ -204,7 +206,7 @@ type_synonym clause = "literal list"
 text \<open> A SAT query is a conjunction of clauses. \<close>
 type_synonym query = "clause list"
 
-text \<open> Given a valuation, evaluate a clause to its truth value. \<close>
+text \<open>Given a valuation, evaluate a clause to its truth value.\<close>
 definition evaluate_clause :: "valuation \<Rightarrow> clause \<Rightarrow> bool"
 where 
   "evaluate_clause \<rho> c = list_ex (List.member \<rho>) c"
@@ -223,6 +225,7 @@ definition "q2 == [[(''a'', True), (''b'', True)], [(''a'', False)], [(''b'', Fa
 definition "q3 == [[(''a'', True), (''b'', False)]]"
 (* q4 is (\<not>b \<or> a) *)
 definition "q4 == [[(''b'', False), (''a'', True)]]"
+definition "q5 == [[(''a'', True), (''b'', True)]]"
 definition "\<rho>1 == [(''a'', True), (''b'', True), (''c'', False)]"
 definition "\<rho>2 == [(''a'', False), (''b'', True), (''c'', True)]"
 
@@ -314,7 +317,7 @@ where
 
 value "update_query ''a'' True q1"
 value "update_query ''a'' False q1"
-value "update_query ''b'' True q1"
+value "update_query ''b'' True q1 "
 value "update_query ''b'' False q1"
 
 text \<open> Extract the set of symbols that appear in a given clause. \<close>
@@ -354,10 +357,12 @@ by pat_completeness auto
 termination 
   sorry
 
+value "update_query ''b'' True (update_query ''a'' True q1)"
 value "simp_solve q1"
 value "simp_solve q2"
 value "simp_solve q3"
 value "simp_solve q4"
+value "simp_solve q5"
 
 
 definition domain :: "('a * 'b) list \<Rightarrow> 'a set"
@@ -367,7 +372,9 @@ where
 lemma evaluate_update_query: 
   assumes "x \<notin> domain \<rho>"
   shows "evaluate (update_query x b q) \<rho> = evaluate q ((x, b) # \<rho>)"
+  apply (induct "b" arbitrary:q)
   oops
+ 
 
 text \<open> If the simple SAT solver returns a valuation, then that 
   valuation really does make the query true. \<close>
@@ -386,6 +393,6 @@ text \<open> If the simple SAT solver returns no valuation, then
 theorem simp_solve_unsat_correct:
   "simp_solve q = None \<Longrightarrow> 
    (\<forall>\<rho>. wf_valuation \<rho> \<longrightarrow> \<not> evaluate q \<rho>)"
-  oops
+  apply (induct "q" rule:HSV_tasks_2024.simp_solve.induct)
 
 end

@@ -110,7 +110,9 @@ lemma dupe_free_concat(xs:seq<symbol>, ys:seq<symbol>)
 // remove the given set of symbols from a clause
 function remove_symbols_clause(c:clause, xs:set<symbol>) : clause
   ensures symbols_clause(remove_symbols_clause(c, xs)) == symbols_clause(c) - xs
-  ensures |remove_symbols_clause(c, xs)| <= |c|
+  ensures if xs * symbols_clause(c) == {}
+          then |remove_symbols_clause(c, xs)| == |c|
+          else |remove_symbols_clause(c, xs)| < |c|
 {
   if c == [] then [] else
   var c' := remove_symbols_clause(c[1..], xs);
@@ -179,9 +181,9 @@ method eval(q:query, r:valuation)
   ensures result == evaluate(q,r)
 {
   var i := 0;
-  while (i < |q|) 
-  invariant 0 <= i <= |q|
-  invariant evaluate(q[..i],r) == true
+  while (i < |q|)
+    invariant 0 <= i <= |q|
+    invariant evaluate(q[..i],r) == true
   {
     result := eval_clause(q[i], r);
     if (!result) {
@@ -225,8 +227,8 @@ method naive_solve (q:query)
   sat := false;
   var i := 0;
   while (i < |rs|)
-  invariant 0 <= i <= |rs|
-  invariant forall val :: val in rs[..i] ==> evaluate(q,val) == false
+    invariant 0 <= i <= |rs|
+    invariant forall val :: val in rs[..i] ==> evaluate(q,val) == false
   {
     sat := eval(q, rs[i]);
     if (sat) {
@@ -262,14 +264,121 @@ function update_query (x:symbol, b:bool, q:query) : query
   q_new + q'
 }
 
+lemma removing_symbol_not_in_clause(c:clause , x : symbol)
+  requires x !in symbols_clause(c)
+  ensures remove_symbols_clause(c,{x}) == c
+{}
+
+lemma update_symbol_not_in_clause(c:clause , x : symbol)
+  requires x !in symbols_clause(c)
+  ensures update_clause(x,true,c) == [c] && update_clause(x,true,c) == [c]
+{
+  removing_symbol_not_in_clause(c,x);
+}
+
+lemma update_literal_not_in_clause(c:clause , xb : literal)
+  requires xb !in c
+  ensures update_clause(xb.0,xb.1,c) == [remove_symbols_clause(c,{xb.0})]
+{
+}
+
+lemma evaluate_clause_associativity(x:symbol, b:bool, r:valuation, c:clause)
+  requires x !in r.Keys
+  ensures (evaluate_clause(c,r) || ((x,b) in c)) == evaluate_clause(c,r[x:=b])
+{
+  if evaluate_clause(c, r) {
+    // Case 1: evaluate_clause(c, r) = true
+    assert evaluate_clause(c, r[x := b]);
+  } else {
+    // Case 2: evaluate_clause(c, r) = false
+    if (x, b) in c {
+      // Subcase 2a: (x, b) is in c
+      assert evaluate_clause(c, r[x := b]);
+    } else {
+      // Subcase 2b: (x, b) is not in c
+      assert forall lit :: lit in c ==> lit != (x, b); // Ensure no dependency on (x, b)
+      assert !evaluate_clause(c, r[x := b]); // Confirm equivalence
+    }
+  }
+}
+
+
+lemma evaluating_clause_removal(x:symbol, b:bool, r:valuation, c:clause)
+  requires x !in r.Keys
+  ensures evaluate_clause(c, r) == evaluate_clause(remove_symbols_clause(c, {x}), r)
+{}
+
+
+lemma evaluate_update_clause(x:symbol, b:bool, r:valuation, c:clause)
+  requires x !in r.Keys
+  ensures evaluate (update_clause (x,b,c) , r) == evaluate_clause (c, r[x:=b])
+{
+  if ((x,b) in c){
+    // if this is the case then update_clause will return an empty query
+    assert update_clause (x,b,c) ==[];
+    // evaluating an empty query is always true
+    assert evaluate ([] , r) == true;
+    // since we know (x,b) is in c we also know this is true
+    assert evaluate_clause (c, r[x:=b]) == true;
+    // our lemma holds
+    assert evaluate (update_clause (x,b,c) , r) == evaluate_clause (c, r[x:=b]);
+  }
+  else{
+    if (x in symbols_clause(c)){
+      // in this case we wil have (x, !b) ONLY in the clause and all x will be removed as they contribute nothing
+      // Here we show that updating the clause is the same as removing all occurences of x, we therefore guarantee x has no effect on valuation
+      assert (x,!b) in c;
+      assert x !in symbols(update_clause(x, b, c));
+      evaluate_clause_associativity(x,b,r,c);
+      evaluating_clause_removal(x,b,r,c);
+      //finally
+      assert evaluate (update_clause (x,b,c) , r) == evaluate_clause (c, r[x:=b]);
+    }
+    else{
+      // Now this is the case where the clause doesnt even contain x
+      assert forall val :: val in symbol_seq_clause( c ) ==> val !=x;
+      assert forall val :: val in symbol_seq( update_clause (x,b,c) ) ==> val !=x;
+      removing_symbol_not_in_clause(c,x);
+      //finally
+      assert evaluate (update_clause (x,b,c) , r) == evaluate_clause (c, r[x:=b]);
+    }
+  }
+}
+
+
+lemma evaluate_query_associativity(q: query, r: valuation)
+  requires |q| >= 0
+  ensures evaluate(q, r) == (if |q| > 0 then (evaluate_clause(q[0], r) && evaluate(q[1..], r)) else true)
+{}
+
+lemma update_clause_query_associativity(x:symbol, b:bool, r:valuation, q:query)
+  requires |q| > 0
+  ensures evaluate(update_query(x, b, q), r) == (evaluate(update_clause(x, b, q[0]), r) && evaluate(update_query(x, b, q[1..]), r))
+{
+  evaluate_query_associativity(update_query(x,b,q),r);
+  var cq := update_clause(x, b, q[0]);
+  if |cq| == 0 {
+    // !!! ????
+    assert update_query(x, b, q[1..]) == ([] + update_query(x, b, q[1..]));
+  }
+}
 // Updating a query under the valuation x:=b is the same as updating
 // the valuation itself and leaving the query unchanged.
-lemma evaluate_update_query(x:symbol, b:bool, r:valuation, q:query)
+lemma evaluate_update_query(x: symbol, b: bool, r: valuation, q: query)
   requires x !in r.Keys
-  ensures evaluate (update_query (x,b,q), r) == evaluate (q, r[x:=b])
+  ensures evaluate(update_query(x, b, q), r) == evaluate(q, r[x := b])
 {
-  // ...?
+  if |q| == 0 {
+    assert evaluate(update_query(x, b, q), r) == evaluate(q, r[x := b]);
+  }
+  else{
+    evaluate_update_clause(x, b, r, q[0]);
+    update_clause_query_associativity(x,b,r,q);
+    //finally
+    assert evaluate(update_query(x, b, q), r) == evaluate(q, r[x := b]);
+  }
 }
+
 
 // A simple SAT solver. Given a query, it does a three-way case split. If
 // the query has no clauses then it is trivially satisfiable (with the
@@ -278,6 +387,8 @@ lemma evaluate_update_query(x:symbol, b:bool, r:valuation, q:query)
 // appears in the query, and makes two recursive solving attempts: one
 // with that symbol evaluated to true, and one with it evaluated to false.
 // If neither recursive attempt succeeds, the query is unsatisfiable.
+
+
 method simp_solve (q:query)
   returns (sat:bool, r:valuation)
   ensures sat==true ==> evaluate(q,r)
