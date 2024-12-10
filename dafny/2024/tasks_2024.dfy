@@ -250,6 +250,7 @@ method naive_solve (q:query)
 // removed from the clause because those literals are false and
 // cannot contribute to making the clause true.
 function update_clause (x:symbol, b:bool, c:clause) : query
+  ensures query_size([c]) >= query_size(update_clause(x,b,c))
 {
   if ((x,b) in c) then [] else [remove_symbols_clause(c,{x})]
 }
@@ -257,10 +258,12 @@ function update_clause (x:symbol, b:bool, c:clause) : query
 // This function updates a query under the valuation x:=b. It
 // invokes update_clause on each clause in turn.
 function update_query (x:symbol, b:bool, q:query) : query
+  ensures query_size(q) >= query_size(update_query(x,b,q))
 {
   if q == [] then [] else
   var q_new := update_clause(x,b,q[0]);
   var q' := update_query(x,b,q[1..]);
+  query_size_law(q_new,q');
   q_new + q'
 }
 
@@ -356,12 +359,11 @@ lemma update_clause_query_associativity(x:symbol, b:bool, r:valuation, q:query)
   ensures evaluate(update_query(x, b, q), r) == (evaluate(update_clause(x, b, q[0]), r) && evaluate(update_query(x, b, q[1..]), r))
 {
   evaluate_query_associativity(update_query(x,b,q),r);
-  var cq := update_clause(x, b, q[0]);
-  if |cq| == 0 {
-    // !!! ????
-    assert update_query(x, b, q[1..]) == ([] + update_query(x, b, q[1..]));
-  }
+  // !!! ????
+  assert update_query(x, b, q[1..]) == ([] + update_query(x, b, q[1..]));
+
 }
+
 // Updating a query under the valuation x:=b is the same as updating
 // the valuation itself and leaving the query unchanged.
 lemma evaluate_update_query(x: symbol, b: bool, r: valuation, q: query)
@@ -387,12 +389,43 @@ lemma evaluate_update_query(x: symbol, b: bool, r: valuation, q: query)
 // appears in the query, and makes two recursive solving attempts: one
 // with that symbol evaluated to true, and one with it evaluated to false.
 // If neither recursive attempt succeeds, the query is unsatisfiable.
+function query_size(q:query):nat
+{
+  if(q==[]) then 0 else |q[0]| + query_size(q[1..])
+}
+
+lemma query_size_law(q1: query, q2: query)
+  ensures query_size(q1) + query_size(q2) == query_size(q1 + q2)
+{
+  if q1 == [] {
+    assert query_size(q1) + query_size(q2) == query_size(q2);
+    assert (q1+q2) == q2;
+    assert query_size(q1 + q2) == query_size(q2);
+  }
+  else {
+    var h := q1[0];
+    var t := q1[1..];
+    // dafny can suck my nuts!
+    assert q1 + q2 == [h] + (t + q2);
+  }
+}
+
+lemma decrease_after_update(x: symbol, b: bool, q: query)
+  requires |q|>0
+  requires x in symbols_clause(q[0])
+  ensures query_size(q)>query_size(update_query(x,b,q))
+{
+  query_size_law(update_clause(x,b,q[0]) , update_query(x,b,q[1..]));
+}
+
+
 
 
 method simp_solve (q:query)
   returns (sat:bool, r:valuation)
   ensures sat==true ==> evaluate(q,r)
   ensures sat==false ==> forall r :: !evaluate(q,r)
+  decreases query_size(q)
 {
   if (q == []) {
     return true, map[];
@@ -400,11 +433,13 @@ method simp_solve (q:query)
     return false, map[];
   } else {
     var x := q[0][0].0;
+    decrease_after_update(x,true,q);
     sat, r := simp_solve(update_query(x,true,q));
     if (sat) {
       r := r[x:=true];
       return;
     }
+    decrease_after_update(x,false,q);
     sat, r := simp_solve(update_query(x,false,q));
     if (sat) {
       r := r[x:=false];
