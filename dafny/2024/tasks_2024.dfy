@@ -360,7 +360,6 @@ lemma update_clause_query_associativity(x:symbol, b:bool, r:valuation, q:query)
   evaluate_query_associativity(update_query(x,b,q),r);
   // !!! ????
   assert update_query(x, b, q[1..]) == ([] + update_query(x, b, q[1..]));
-
 }
 
 // Updating a query under the valuation x:=b is the same as updating
@@ -404,7 +403,6 @@ lemma query_size_law(q1: query, q2: query)
     assert (q1+q2) == q2;
     assert symbols(q1 + q2) == symbols(q2);
   }
-
   else {
     var h := q1[0];
     var t := q1[1..];
@@ -419,7 +417,6 @@ lemma decrease_after_update(x: symbol, b: bool, q: query)
   ensures x !in symbols(update_query(x,b,q))
   ensures symbols(q)>=symbols(update_query(x,b,q))
 {
-  query_size_law(q , update_query(x,b,q));
   update_clause_query_symbols(x,b,q);
 }
 
@@ -436,7 +433,7 @@ lemma decrease_after_update(x: symbol, b: bool, q: query)
 method simp_solve (q:query)
   returns (sat:bool, r:valuation)
   ensures sat==true ==> evaluate(q,r)
-  // ensures sat==false ==> forall r :: !evaluate(q,r)
+  ensures sat==false ==> forall r :: !evaluate(q,r)
   ensures forall x :symbol :: x !in symbols(q) ==> (x !in r.Keys)
   decreases symbols(q)
 {
@@ -456,10 +453,33 @@ method simp_solve (q:query)
     decrease_after_update(x,false,q);
     sat, r := simp_solve(update_query(x,false,q));
     evaluate_update_query(x,false,r,q);
+
     if (sat) {
       r := r[x:=false];
       return;
     }
+
+    forall r: valuation ensures sat == false ==> !evaluate(q,r)
+    {
+      if x !in r.Keys {
+        evaluate_update_query(x,false,r,q);
+      }else {
+        //finally
+        if (r[x] == true){
+          // if the literal is r.items
+          var r' : valuation := r - {x};
+          evaluate_update_query(x,true,r',q);
+        }
+        else{
+          var r' : valuation := r - {x};
+          evaluate_update_query(x,false,r',q);
+        }
+      }
+
+      assert (evaluate(q,r) ==> (evaluate(update_query(x,true,q),r) || evaluate(update_query(x,false,q),r)));
+    }
+
+
     return sat, map[];
   }
 }
