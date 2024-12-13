@@ -110,6 +110,9 @@ corollary
   "\<forall>d \<in> set (digits10 n). d < 10" using t2
   by blast
 
+theorem digits10_never_empty : "\<forall>n \<in> \<nat> . digits10 n \<noteq> []"
+  by simp
+
 text \<open> Task 3: Converting to and from digit lists. \<close>
 
 text \<open> A function that converts a list of digits back into a natural number. \<close>
@@ -124,6 +127,14 @@ text \<open> Applying digits10 then sum10 gets you back to the same number. \<cl
 theorem digits10_sum10_inverse: 
   "sum10 (digits10 n) = n"
   by (induct n rule: digits10.induct,simp)
+
+declare [[linarith_split_limit = 20]]
+
+
+text \<open> Applying sum10 then digits10 doesnt always return the same number!!! \<close>
+lemma digits10_sum10_counterexample:
+  "\<exists>ds. digits10 (sum10 ds) \<noteq> ds" 
+  by (metis Nats_0 digits10_never_empty sum10.simps(1))
 
 section \<open> Task 4: A divisibility theorem. \<close>
 
@@ -369,18 +380,87 @@ definition domain :: "('a * 'b) list \<Rightarrow> 'a set"
 where
   "domain kvs = set (map fst kvs)"
 
-lemma evaluate_update_query: 
-  assumes "x \<notin> domain \<rho>"
-  shows "evaluate (update_query x b q) \<rho> = evaluate q ((x, b) # \<rho>)"
-  apply (induct "b" arbitrary:q)
-  oops
+
+
+lemma removing_symbol_not_in_clause:
+  assumes "(x, b) \<notin> set c"
+  shows "removeAll (x, b) c = c"
+  using assms
+  by auto
+
+lemma update_literal_not_in_clause:
+  assumes "(x, b) \<notin> set c"
+  shows "update_clause x b c = [removeAll (x,\<not>b) c]" 
+  using assms
+  by (simp add: in_set_member update_clause_def)
+
+lemma evaluate_clause_associativity:
+  assumes xdom: "x \<notin> domain \<rho>"
+  shows "(evaluate_clause c \<rho> \<or> (x, b) \<in> set c) = (evaluate_clause c ((x, b) # \<rho>))" 
+  using xdom
+  using evaluate_clause_def member_def by fastforce
+
+lemma evaluating_clause_removal:
+  assumes xdom: "x \<notin> domain \<rho>"
+  shows "evaluate_clause c \<rho> = evaluate_clause (removeAll (x,b) c) \<rho>"
+  using xdom sorry
+
+lemma evaluate_update_clause:
+assumes xdom: "x \<notin> domain \<rho>"
+shows "(evaluate (update_clause x b c) \<rho>) = (evaluate_clause c ((x, b) # \<rho>))"
+  using xdom unfolding update_clause_def update_clause_def sorry
  
+
+lemma evaluate_update_query: 
+  assumes xdom: "x \<notin> domain \<rho>"
+  shows "evaluate (update_query x b q) \<rho> = evaluate q ((x, b) # \<rho>)"
+  using xdom
+proof (induct "x" "b" "q" rule:HSV_tasks_2024.update_query.induct)
+  case (1 x b)
+  then show ?case 
+    using evaluate_def by auto
+next
+  case (2 x b c q)
+  then show ?case 
+  proof(cases "List.member c (x, b)")
+    case True
+    have "evaluate (update_query x b (c # q)) \<rho> = evaluate (update_clause x b c @ update_query x b q) \<rho>" by simp
+    also have " ... = evaluate (update_query x b q) \<rho>" using xdom by (simp add: True update_clause_def)
+    also have ahmad:"... = evaluate q ((x,b) # \<rho>)" by (simp add: "local.2.hyps" "local.2.prems")
+    have omar:"list_all (evaluate_clause ((x, b) # \<rho>)) (c # q) = list_all (list_ex (List.member ((x, b) # \<rho>))) (c # q) "
+      using evaluate_clause_def by presburger
+    have yazan:"... = evaluate (c # q) ((x, b) # \<rho>)"
+      using evaluate_clause_def evaluate_def by presburger
+    from omar ahmad yazan show ?thesis 
+      using Bex_set True calculation evaluate_clause_def evaluate_def member_def member_rec(1) by fastforce
+  next
+    case False
+      have "evaluate (update_query x b (c # q)) \<rho> = evaluate (removeAll (x, \<not>b) c # update_query x b q) \<rho>" by (simp add: False update_clause_def) 
+      also have "...  = evaluate (c # update_query x b q) \<rho>"
+        proof (cases "List.member c (x,\<not>b)")
+          case True
+           have omar:"evaluate (c # update_query x b q) \<rho> = list_all (list_ex (List.member \<rho>)) (c # (update_query x b q))"
+             using evaluate_clause_def evaluate_def by presburger
+           also have "... = list_all (list_ex (List.member \<rho>)) ((removeAll (x, \<not>b) c) # (update_query x b q))" sorry 
+           finally show ?thesis
+             by (metis evaluate_clause_def evaluate_def list_all_cong)
+        next
+        case False
+          then show ?thesis by (simp add: in_set_member) 
+        qed
+    have  "evaluate (update_query x b (c # q)) \<rho> = evaluate (update_clause x b c @ update_query x b q) \<rho>" by simp
+    also have " ... = evaluate ([removeAll (x, \<not> b) c]@ update_query x b q) \<rho>" using False update_clause_def by auto
+    also have " ... = list_all (evaluate_clause \<rho>) ([removeAll (x, \<not> b) c]@ update_query x b q) " sorry
+    also have  " ... = evaluate (c#q) ((x, b) # \<rho>) " sorry
+    then show ?thesis
+      using \<open>evaluate (update_query x b (c # q)) \<rho> = evaluate (removeAll (x, \<not> b) c # update_query x b q) \<rho>\<close> calculation by blast
+qed 
 
 text \<open> If the simple SAT solver returns a valuation, then that 
   valuation really does make the query true. \<close>
 theorem simp_solve_sat_correct:
   "simp_solve q = Some \<rho> \<Longrightarrow> evaluate q \<rho>"
-  oops
+  sorry
 
 text \<open> A valuation is deemed well-formed (wf) as long as it does
   not assign a truth-value for the same symbol more than once. \<close>
@@ -393,6 +473,6 @@ text \<open> If the simple SAT solver returns no valuation, then
 theorem simp_solve_unsat_correct:
   "simp_solve q = None \<Longrightarrow> 
    (\<forall>\<rho>. wf_valuation \<rho> \<longrightarrow> \<not> evaluate q \<rho>)"
-  apply (induct "q" rule:HSV_tasks_2024.simp_solve.induct)
+  sorry
 
 end
